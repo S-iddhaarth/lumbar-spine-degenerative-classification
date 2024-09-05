@@ -1,0 +1,57 @@
+{
+    "paths":{
+        "dataset":{
+            "train":{
+            "coordinates":"Data\\train_label_coordinates.csv",
+            "labels":"Data\\train.csv",
+            "series":"Data\\train_series_descriptions.csv",
+            "images":"Data\\train_images"
+            },
+            "test":{
+                "series":"Data\\test_series_descriptions.csv",
+                "images":"Data\\test_images"
+            },
+            "checkpoints":"checkpoints\\test1"
+        }
+    },
+
+    "train_config":{
+
+        "optimizer":{
+            "learning_rate":0.001,
+            "betas":[0.9,0.999],
+            "eps": 1e-8, 
+            "weight_decay": 0.0, 
+            "amsgrad": false, 
+            "foreach": null, 
+            "maximize": false,
+            "capturable": false, 
+            "differentiable":false, 
+            "fused":null
+        },
+
+        "data_loader": {
+            "train": {
+                "batch_size": 32,
+                "shuffle": true,
+                "num_workers": 4,
+                "pin_memory": true,
+                "drop_last": false,
+                "timeout": 0,
+                "prefetch_factor": 2,
+                "persistent_workers": true
+            },
+            "test": {
+                "batch_size": 32,
+                "shuffle": true,
+                "num_workers": 4,
+                "pin_memory": true,
+                "drop_last": false,
+                "timeout": 0,
+                "prefetch_factor": 2,
+                "persistent_workers": true
+            }
+        }
+
+    }
+}
