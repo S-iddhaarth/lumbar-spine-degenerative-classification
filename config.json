@@ -5,14 +5,16 @@
             "coordinates":"Data\\train_label_coordinates.csv",
             "labels":"Data\\train.csv",
             "series":"Data\\train_series_descriptions.csv",
-            "images":"Data\\train_images"
+            "images":"Data\\train_images",
+            "annotation":"Data\\naive_annotation.json"
             },
             "test":{
                 "series":"Data\\test_series_descriptions.csv",
                 "images":"Data\\test_images"
-            },
-            "checkpoints":"checkpoints\\test1"
-        }
+            }
+            
+        },
+        "checkpoint":"checkpoints\\test1"
     },
 
     "train_config":{
@@ -34,12 +36,22 @@
             "train": {
                 "batch_size": 32,
                 "shuffle": true,
-                "num_workers": 4,
+                "num_workers": 0,
+                "pin_memory": false,
+                "drop_last": false,
+                "timeout": 0,
+                "prefetch_factor": null,
+                "persistent_workers": false
+            },
+            "valid": {
+                "batch_size": 32,
+                "shuffle": true,
+                "num_workers": 0,
                 "pin_memory": true,
                 "drop_last": false,
                 "timeout": 0,
-                "prefetch_factor": 2,
-                "persistent_workers": true
+                "prefetch_factor": null,
+                "persistent_workers": false
             },
             "test": {
                 "batch_size": 32,

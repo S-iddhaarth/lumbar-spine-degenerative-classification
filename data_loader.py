@@ -11,6 +11,9 @@ import polars as pl
 import numpy as np
 from Preprocessing.utility import get_z
 from tqdm import tqdm
+from utils.utility import get_elements
+import json
+from PIL import Image
 
 class DataLoader(Dataset):
     """
@@ -115,7 +118,7 @@ class DataLoader_np(Dataset):
                 clms = [x + y for x in clms for y in ["_Normal/Mild", "_Moderate", "_Severe"]]
                 
                 label = self.label.filter(
-                    pl.col("study_id") == j['study_id']
+                    pl.col("study_id") == j['study_id']   
                 ).select(clms)
                 try:
                     label = np.array(label).reshape(-1, 3)
@@ -136,10 +139,10 @@ class DataLoader_np(Dataset):
     def __getitem__(self, idx):
         if not self.test:
             pth, label, coords, axis = self.data_points[idx]
-        else: 
+        else:
             pth, axis = self.data_points[idx]
             
-            
+
         ordered = natsort.natsorted(os.listdir(pth))
         dicoms = [pydicom.read_file(os.path.join(pth, i)) for i in ordered]
 
@@ -150,10 +153,32 @@ class DataLoader_np(Dataset):
         dicoms = np.stack(dicoms)
         
         if not self.test:
-            data = {"axis": axis, "image": dicoms.squeeze(1),
+            data = {"axis": axis, "image": dicoms,
                 "label": torch.tensor(label), "coords": torch.tensor(coords)}
         else:
-            data = {"axis": axis, "image": dicoms.squeeze(1),
+            data = {"axis": axis, "image": dicoms,
                 }
         return data
-
+    
+class naive_loader(Dataset):
+    def __init__(self,path:str,ch,transform) -> None:
+        with open(path,"r") as fl:
+            self.data = json.load(fl)
+        self.data_list = list(self.data.keys())
+        self.transform = transform
+        self.ch = ch
+    def __len__(self):
+        return len(self.data_list)
+    def __getitem__(self, index) :
+        paths,labels = self.data[self.data_list[index]]
+        images = []
+        for path in paths:
+            dirs = natsort.natsorted(os.listdir(path[0]))
+            n = len(dirs)
+            n = get_elements(n,self.ch)
+            di = [pydicom.dcmread(os.path.join(path[0],dirs[i])) for i in n]
+            di = [self.transform(Image.fromarray(i.pixel_array.astype(np.int16))) for i in di]
+            images.extend(di)
+        di = torch.stack(images)
+        
+        return (di.type(torch.float32).squeeze(dim=1),torch.tensor(labels,dtype=float))

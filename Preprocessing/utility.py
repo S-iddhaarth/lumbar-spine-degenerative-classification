@@ -1,3 +1,4 @@
+
 def get_z(dicom,x,y):
     H,W = dicom.pixel_array.shape
     sx,sy,sz = [float(v) for v in dicom.ImagePositionPatient]
