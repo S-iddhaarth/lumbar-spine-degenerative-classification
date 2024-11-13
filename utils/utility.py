@@ -134,7 +134,7 @@ def score(
     return np.average(condition_losses, weights=condition_weights)
 
 def generate_ground_truth(root_dir, keys):
-    
+    keys = [int(i) for i in keys]
     train_main = pd.read_csv(os.path.join(root_dir, "train.csv"))
     train_main = train_main[train_main['study_id'].isin(keys)]
     solution = train_main.melt(id_vars=["study_id"], var_name="full_label", value_name="severity")
@@ -165,3 +165,24 @@ def generate_ground_truth(root_dir, keys):
     # Save the resulting DataFrame to a CSV file
     solution.to_csv("temp_train_solution.csv", index=False)
     return solution
+
+def substitute_patterns(array):
+    # Define the mapping
+    pattern_to_value = {
+        (1, 0, 0): 0,
+        (0, 1, 0): 1,
+        (0, 0, 1): 2
+    }
+    
+    # Initialize an empty list to store the results
+    result = []
+    
+    # Iterate over each row in the array
+    for row in array:
+        # Convert the row to a tuple so it can be used as a dictionary key
+        row_tuple = tuple(row)
+        
+        # Append the corresponding value to the result list
+        result.append(pattern_to_value.get(row_tuple, -1))  # Use -1 for any unmatched patterns
+    
+    return result

@@ -6,7 +6,7 @@
             "labels":"Data/train.csv",
             "series":"Data/train_series_descriptions.csv",
             "images":"Data/train_images",
-            "annotation":"Data/naive_annotation.json"
+            "annotation":"Data/annotation.json"
             },
             "test":{
                 "series":"Data/test_series_descriptions.csv",

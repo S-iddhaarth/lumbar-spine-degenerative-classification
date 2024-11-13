@@ -187,4 +187,4 @@ class naive_loader(Dataset):
         di = torch.stack(images)
         self.order = list(labels.keys())
         return (di.type(torch.float32).squeeze(dim=1),torch.tensor(list(labels.values()),dtype=float)
-                ,torch.tensor(self.data_list[index],dtype=int))
+                ,torch.tensor(int(self.data_list[index]),dtype=int))

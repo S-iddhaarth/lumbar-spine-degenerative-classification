@@ -10,9 +10,18 @@ def naive_annotate(root,train_paths:dict,out:str)->None:
     label = pl.read_csv(os.path.join(root,train_paths["labels"]))
     v1 = len(label)
     label = label.drop_nulls()
-    print(v1 - len(label))
-    label = label.to_dummies(columns=label.columns[1:])
     
+    label = label.to_dummies(columns=label.columns[1:])
+    clms = label.columns
+    for i in range(len(clms)):
+        if i%3 == 0:
+            continue
+        if i%3 == 1:
+            buffer = clms[i]
+        if i%3 == 2:
+            clms[i-1] = clms[i]
+            clms[i] = buffer
+    label = label[clms]
     series_intermediate = defaultdict(list)
     os.makedirs(".cache",exist_ok=True)
     for series_data in tqdm(series.iter_rows(named=True),
@@ -52,8 +61,8 @@ def remove_more_than_3(input:str,output:str)->None:
 def split_annotations(annotations, split_ratio):
     # Convert the annotations to a list of items (key-value pairs)
     with open(annotations,"r") as fl:
-        annotations = json.load(fl)
-    items = list(annotations.items())
+        annotation = json.load(fl)
+    items = list(annotation.items())
     
     # Shuffle the items to ensure randomness
     random.shuffle(items)
@@ -73,5 +82,5 @@ def split_annotations(annotations, split_ratio):
         "train": train_annotations,
         "test": test_annotations
     }
-    with open(annotations,"r") as fl:
+    with open(annotations,"w") as fl:
         json.dump(out,fl)
