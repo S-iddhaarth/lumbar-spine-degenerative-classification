@@ -3,10 +3,13 @@ import json
 import torchvision.models as models
 from torch import nn
 from torchvision.transforms import transforms
-def main():
+def main(annotate = False):
     with open("config.json","r") as fl:
         config = json.load(fl)
-
+    if annotate:
+        import data_preparation.annotate as anote
+        anote.naive_annotate('./',config["paths"]["dataset"]["train"],'./Data/annotation.json')
+        anote.remove_more_than_3('./Data/annotation.json','./Data/annotation.json')
     # Load the ConvNeXt model
     model = models.convnext_tiny(pretrained=True)
 

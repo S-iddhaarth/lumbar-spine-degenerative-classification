@@ -161,12 +161,17 @@ class DataLoader_np(Dataset):
         return data
     
 class naive_loader(Dataset):
-    def __init__(self,path:str,ch,transform) -> None:
+    def __init__(self,path:str,ch,transform,train=True) -> None:
         with open(path,"r") as fl:
-            self.data = json.load(fl)
+            data = json.load(fl)
+        if train:
+            self.data = data["train"]
+        else:
+            self.data = data["test"]
         self.data_list = list(self.data.keys())
         self.transform = transform
         self.ch = ch
+        self.order = None
     def __len__(self):
         return len(self.data_list)
     def __getitem__(self, index) :
@@ -180,5 +185,6 @@ class naive_loader(Dataset):
             di = [self.transform(Image.fromarray(i.pixel_array.astype(np.int16))) for i in di]
             images.extend(di)
         di = torch.stack(images)
-        
-        return (di.type(torch.float32).squeeze(dim=1),torch.tensor(labels,dtype=float))
+        self.order = list(labels.keys())
+        return (di.type(torch.float32).squeeze(dim=1),torch.tensor(list(labels.values()),dtype=float)
+                ,torch.tensor(self.data_list[index],dtype=int))

@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 class Trainer():
     def __init__(self,config:dict,train:dict,transform)->None:
+        self.solution = None
         self.seed = train["seed"]
         self.log = train["log"]
         if self.seed:
@@ -47,13 +48,14 @@ class Trainer():
 
     def _load(self):
         
-        data = data_loader.naive_loader(
+        train = data_loader.naive_loader(
             self.paths["dataset"]["train"]["annotation"],ch=5,transform=self._transfrom
         )
-        valid_split = int(len(data)*0.2)
-        train_split = len(data)-valid_split
-        data = torch.utils.data.random_split(data,[train_split,valid_split])
-        train,valid = data[0],data[1]
+        
+        valid = data_loader.naive_loader(
+            self.paths["dataset"]["train"]["annotation"],ch=5,transform=self._transfrom,
+            train=False
+        )
 
         trainLoader = DataLoader(
             dataset=train,
@@ -70,7 +72,7 @@ class Trainer():
         validLoader = DataLoader(
             dataset=valid,
             batch_size=self.train_config["data_loader"]["valid"]["batch_size"],
-            shuffle=self.train_config["data_loader"]["valid"]["shuffle"],
+            shuffle=False,
             num_workers=self.train_config["data_loader"]["valid"]["num_workers"],
             pin_memory=self.train_config["data_loader"]["valid"]["pin_memory"],
             drop_last=self.train_config["data_loader"]["valid"]["drop_last"],
@@ -78,7 +80,7 @@ class Trainer():
             prefetch_factor=self.train_config["data_loader"]["valid"]["prefetch_factor"],
             persistent_workers=self.train_config["data_loader"]["valid"]["persistent_workers"],
             )
-
+        self.solution = utils.utility.generate_ground_truth('Data/',valid.data_list)
         return trainLoader,validLoader
 
     def _run_batch(self,image,label,train=True):
@@ -177,7 +179,7 @@ class Trainer():
             "validation accuracy":accuracy,
             "validation precision":precision,
             "validation recall":recall,
-            "validation f1":f1,
+            "validation f1":f1, 
             "total validation loss":running_loss/len(self.train_loader)
         }
             wandb.log(out)

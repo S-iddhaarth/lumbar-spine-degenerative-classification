@@ -3,10 +3,14 @@ import polars as pl
 from tqdm import tqdm
 import json
 from collections import defaultdict
+import random 
 
 def naive_annotate(root,train_paths:dict,out:str)->None:
     series = pl.read_csv(os.path.join(root,train_paths["series"]))
     label = pl.read_csv(os.path.join(root,train_paths["labels"]))
+    v1 = len(label)
+    label = label.drop_nulls()
+    print(v1 - len(label))
     label = label.to_dummies(columns=label.columns[1:])
     
     series_intermediate = defaultdict(list)
@@ -27,8 +31,9 @@ def naive_annotate(root,train_paths:dict,out:str)->None:
         json.dump(series_intermediate,fl)
     
     output = {}
+    header = label.columns[1:]
     for rows in label.iter_rows():
-        series_id,ground_truth = rows[0],rows[1:]
+        series_id,ground_truth = rows[0],dict(zip(header,rows[1:]))
         output[series_id] = (series_intermediate[series_id],ground_truth)
     with open(out,"w") as fl:
         json.dump(output,fl)
@@ -43,3 +48,30 @@ def remove_more_than_3(input:str,output:str)->None:
             new[key] = value
     with open(output,"w") as fl:
         json.dump(new,fl)
+
+def split_annotations(annotations, split_ratio):
+    # Convert the annotations to a list of items (key-value pairs)
+    with open(annotations,"r") as fl:
+        annotations = json.load(fl)
+    items = list(annotations.items())
+    
+    # Shuffle the items to ensure randomness
+    random.shuffle(items)
+    
+    # Calculate the split index
+    split_index = int(len(items) * split_ratio)
+    
+    # Split the items into train and test sets
+    train_items = items[:split_index]
+    test_items = items[split_index:]
+    
+    # Convert the lists of items back to dictionaries
+    train_annotations = dict(train_items)
+    test_annotations = dict(test_items)
+    
+    out = {
+        "train": train_annotations,
+        "test": test_annotations
+    }
+    with open(annotations,"r") as fl:
+        json.dump(out,fl)

@@ -2,6 +2,9 @@ import os
 import torch
 import random 
 import numpy as np
+import pandas as pd
+import pandas.api.types
+import sklearn.metrics
 
 def grad_flow_dict(named_parameters: dict) -> dict:
     """
@@ -52,10 +55,8 @@ def get_elements(length, size):
         result += list(range(extra_elements))
         return result
 
-import numpy as np
-import pandas as pd
-import pandas.api.types
-import sklearn.metrics
+class ParticipantVisibleError(Exception):
+    pass
 
 
 
@@ -131,3 +132,36 @@ def score(
     condition_losses.append(any_severe_spinal_loss)
     condition_weights.append(any_severe_scalar)
     return np.average(condition_losses, weights=condition_weights)
+
+def generate_ground_truth(root_dir, keys):
+    
+    train_main = pd.read_csv(os.path.join(root_dir, "train.csv"))
+    train_main = train_main[train_main['study_id'].isin(keys)]
+    solution = train_main.melt(id_vars=["study_id"], var_name="full_label", value_name="severity")
+    solution["row_id"] = solution.apply(lambda row: str(row.study_id) + "_" + row.full_label, axis=1)
+    
+    # Fill severity with "Normal/Mild" where NaN
+    solution.severity = solution.severity.fillna("Normal/Mild")
+    
+    # Set the normal_mild, moderate, and severe columns
+    solution.loc[solution.severity == "Normal/Mild", "normal_mild"] = 1
+    solution.loc[solution.severity == "Moderate", "moderate"] = 1
+    solution.loc[solution.severity == "Severe", "severe"] = 1
+
+    # Set sample_weight column
+    solution.loc[solution.severity == "Normal/Mild", "sample_weight"] = 1
+    solution.loc[solution.severity == "Moderate", "sample_weight"] = 2
+    solution.loc[solution.severity == "Severe", "sample_weight"] = 3
+
+    # Select and arrange columns
+    solution = solution[["study_id", "row_id", "normal_mild", "moderate", "severe", "sample_weight"]]
+    
+    # Fill NaN values with 0
+    solution = solution.fillna(0)
+    
+    # Sort the DataFrame by row_id
+    solution = solution.sort_values(by=["row_id"])
+    
+    # Save the resulting DataFrame to a CSV file
+    solution.to_csv("temp_train_solution.csv", index=False)
+    return solution
