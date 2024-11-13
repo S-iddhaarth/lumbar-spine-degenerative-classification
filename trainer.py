@@ -6,6 +6,7 @@ import utils.utility
 import os
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
 from torch.nn import Sigmoid
+from tqdm import tqdm
 
 class Trainer():
     def __init__(self,config:dict,train:dict,transform)->None:
@@ -19,7 +20,9 @@ class Trainer():
         self.train_config = config["train_config"]
         self.criteria = train['criteria']
         self.model = train['model']
+        
         self.device = train['device']
+        self.model.to(self.device)
         self.optimizer = torch.optim.Adam(
             params=self.model.parameters(),
             lr=self.train_config["optimizer"]["learning_rate"],
@@ -45,7 +48,7 @@ class Trainer():
     def _load(self):
         
         data = data_loader.naive_loader(
-            self.paths["dataset"]["train"]["annotation"],ch=10,transform=self._transfrom
+            self.paths["dataset"]["train"]["annotation"],ch=5,transform=self._transfrom
         )
         valid_split = int(len(data)*0.2)
         train_split = len(data)-valid_split
@@ -107,15 +110,14 @@ class Trainer():
         self.model.train()
         all_preds = []
         all_labels = []
-        for batch in self.train_loader:
+        progress_bar = tqdm(self.train_loader, desc=f"Epoch {epoch+1}", ncols=100)
+        for batch in progress_bar:
             image = batch[0].to(self.device)
             label = batch[1].to(self.device)
             loss, preds = self._run_batch(image, label)
-            print(f'{loss}')
             all_preds.append(preds.detach().cpu())
             all_labels.append(label.detach().cpu())
             running_loss += loss
-            
             if self.log:
                 out = utils.utility.grad_flow_dict(self.model.named_parameters())
                 out.update({"train step loss":loss})
@@ -164,7 +166,6 @@ class Trainer():
             all_logits.append(preds.detach().cpu())
             all_labels.append(label.detach().cpu())
             running_loss += loss
-            break
         y_pred = torch.cat(all_logits).numpy()
         y_label = torch.cat(all_labels).numpy()
         accuracy = accuracy_score(y_label, y_pred)
