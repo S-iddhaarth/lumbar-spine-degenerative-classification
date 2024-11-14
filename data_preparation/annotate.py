@@ -10,15 +10,6 @@ def naive_annotate(root,train_paths:dict,out:str)->None:
     label = pl.read_csv(os.path.join(root,train_paths["labels"]))
     v1 = len(label)
     label = label.drop_nulls()
-<<<<<<< HEAD
-    print(v1 - len(label))
-    category_order = ['Normal/Mild', 'Moderate', 'Severe']
-    label = label.with_columns(
-        [pl.col(column).cast(pl.Categorical).set_sorted(category_order) for column in label.columns[1:]]
-    )
-    label = label.to_dummies(columns=label.columns[1:])
-    print(label.head())
-=======
     
     label = label.to_dummies(columns=label.columns[1:])
     clms = label.columns
@@ -31,7 +22,6 @@ def naive_annotate(root,train_paths:dict,out:str)->None:
             clms[i-1] = clms[i]
             clms[i] = buffer
     label = label[clms]
->>>>>>> aeb0f9e5afe9743dbb4f8bf85f54b3f051d213ec
     series_intermediate = defaultdict(list)
     os.makedirs(".cache",exist_ok=True)
     for series_data in tqdm(series.iter_rows(named=True),

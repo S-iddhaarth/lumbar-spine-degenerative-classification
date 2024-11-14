@@ -29,7 +29,12 @@ def grad_flow_dict(named_parameters: dict) -> dict:
 
 def seed_everything(seed: int) -> None:
     """
-    Sets the seed for generating random numbers to ensure reproducibility.
+    Sets the seed for generating random numbers to ensure reproducibility across various libraries.
+    
+    This function sets the seed for the Python `random` module, the environment variable
+    `PYTHONHASHSEED`, the NumPy random number generator, and the PyTorch random number
+    generator (for both CPU and CUDA operations). It also configures PyTorch to use deterministic
+    algorithms for operations to ensure reproducibility. 
 
     Args:
         seed (int): The seed value to be set for random number generators.
@@ -37,13 +42,44 @@ def seed_everything(seed: int) -> None:
     Returns:
         None
     """
+    import random
+    import os
+    import numpy as np
+    import torch
+
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # If using multi-GPU.
     torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.benchmark = False  # Note: Setting this to True can improve performance but may affect reproducibility.
+
+
+def get_series(df_series, study_id, series_description):
+    """
+    Retrieves a list of series IDs from a DataFrame based on the given study ID and series description.
+
+    Args:
+        df_series (pd.DataFrame): DataFrame containing series data with columns 'study_id', 'series_description', and 'series_id'.
+        study_id (str): The study ID to filter the DataFrame.
+        series_description (str): The series description to filter the DataFrame. It can be "Axial T2", "Sagittal T1", or "Sagittal T2/STIR".
+
+    Returns:
+        list or None: A list of series IDs matching the given study ID and series description, or None if no match is found.
+    """
+    # Filter the DataFrame based on study_id and series_description
+    series_list = df_series[
+        (df_series['study_id'] == study_id) & 
+        (df_series['series_description'] == series_description)
+    ]['series_id'].tolist()
+
+    # Return None if no series IDs are found, otherwise return the list of series IDs
+    if len(series_list) == 0:
+        return None
+    return series_list
+
 
 def get_elements(length, size):
     if size <= length:

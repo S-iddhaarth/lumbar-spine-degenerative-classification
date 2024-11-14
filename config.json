@@ -1,4 +1,4 @@
-{
+{"config-1":{
     "paths":{
         "dataset":{
             "train":{
@@ -65,5 +65,42 @@
             }
         }
 
+    }
+},
+"config-2":
+    {
+        "debug":true,
+        "debug_n":100,
+        "coord_model_names" :{
+        "sagt2": "rsna-2024-glad-moon-593",
+        "sagt1": "rsna-2024-leafy-cherry-654",
+        "axi": "rsna-2024-scarlet-feather-603"
+        },
+
+        "model_names":{
+            "spinal": "rsna-2024-giddy-monkey-1266",
+            "foraminal": "rsna-2024-hardy-voice-1244",
+            "subarticular": "rsna-2024-fiery-meadow-1254",
+            "global": "rsna-2024-dashing-spaceship-1252",
+
+            "spinal_2": "rsna-2024-leafy-river-1268",
+            "foraminal_2": "rsna-2024-snowy-oath-1251",
+            "subarticular_2": "rsna-2024-hearty-spaceship-1256",
+            "global_2": "rsna-2024-cool-frost-1378",
+
+            "spinal_3": "rsna-2024-splendid-glade-1421",
+            "foraminal_3": "rsna-2024-blooming-gorge-1250",
+            "subarticular_3": "rsna-2024-smooth-resonance-1422",
+            "global_3": "rsna-2024-radiant-tree-1423"
+        },
+        "input_dir":"./",
+        "data_dir" :"Data/",
+        "out_dir" :"Out/",
+        "levels" : ["l1_l2", "l2_l3", "l3_l4", "l4_l5", "l5_s1"],
+        "conditions" : ["spinal_canal_stenosis", 
+            "left_neural_foraminal_narrowing", "right_neural_foraminal_narrowing", 
+            "left_subarticular_stenosis", "right_subarticular_stenosis"],
+        "sides" : ["left", "right"],
+        "seed":42
     }
 }

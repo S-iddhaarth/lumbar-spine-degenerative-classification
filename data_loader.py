@@ -15,151 +15,80 @@ from utils.utility import get_elements
 import json
 from PIL import Image
 import torch
-class DataLoader(Dataset):
-    """
-    
-    """
-    def __init__(self, config: dict, transform=None, test=False, resize=None) -> None:
-        self.test = False
-        self.series = pl.read_csv(config["series"])
+import torchvision.transforms as T
+
+class neural_Dataset(Dataset):
+    def __init__(self, df,image_dir,transform=None):
+        self.df=df
+        self.img_dir = image_dir
         self.transform = transform
-        self.data_points = []
-        self.resize = resize
-        if not test:
-            self.label = pl.read_csv(config["labels"])
-            self.label = self.label.to_dummies(columns=self.label.columns[1:])
-            self.coordinates = pl.read_csv(config["coordinates"])
-
-            for j in tqdm(self.series.iter_rows(named=True), 
-                        total=self.series.shape[0], desc="Processing items"):
-
-                path = os.path.join(config["images"], str(j['study_id']), str(j['series_id']))
-                clms_df = self.coordinates.filter(
-                    (pl.col("study_id") == j['study_id']) &
-                    (pl.col("series_id") == j['series_id'])
-                ).select(["condition", "level", "instance_number", "x", "y"]) 
-
-                clms = []
-                for l in clms_df.iter_rows(named=True):
-                    clms.append((
-                        ("_".join(l["condition"].split(" ")))
-                        + "_" + "_".join(l["level"].split('/'))
-                    ).lower())
-                clms = [x + y for x in clms for y in ["_Normal/Mild", "_Moderate", "_Severe"]] 
-
-                label = self.label.filter(
-                    pl.col("study_id") == j['study_id']
-                ).select(clms)
-                try:
-                    label = np.array(label).reshape(-1, 3)
-                except Exception as _:
-                    print(f'path - {path}')
-                    continue
-                data = (path, label, clms_df.select(
-                    ["instance_number", "x", "y"]), j["series_description"]
-                )
-                self.data_points.append(data)
-        else: 
-            for j in self.series.iter_rows(named=True):
-                path = os.path.join(config["images"], str(j['study_id']),
-                                    str(j['series_id']),j["series_description"]) 
-
-    def __len__(self):
-        return len(self.data_points)
-    
-    def __getitem__(self, idx):
-        pth, label, coords, axis = self.data_points[idx]
-        ordered = natsort.natsorted(os.listdir(pth))
-        dicoms = [pydicom.read_file(os.path.join(pth, i)) for i in ordered]
-        coo = np.zeros_like(label,dtype=np.float16)
-        for idx, i in enumerate(coords.iter_rows(named=True)):
-
-            H, W,x,y, z = get_z(dicoms[i["instance_number"]], i["x"], i["y"])
-            if self.resize:
-                x = x * (self.resize / H)
-                y = y * (self.resize / W)
-            coo[idx, 0] = x
-            coo[idx, 1] = y
-            coo[idx, 2] = z
-        if self.transform:
-            dicoms = [self.transform(i.pixel_array.astype(np.float32)) for i in dicoms]
-        else:
-            dicoms = [torch.tensor(i.pixel_array) for i in dicoms]
-        dicoms = np.stack(dicoms)
-        return {"axis": axis, "image": dicoms.squeeze(1),
-                "label": torch.tensor(label), "coords": torch.tensor(coo)}
         
-class DataLoader_np(Dataset):
-    def __init__(self, config: dict, transform=None, test=False, resize=None) -> None:
-        self.test = False
-        self.series = pl.read_csv(config["series"])
-        self.transform = transform
-        self.data_points = []
-        self.resize = resize
-        if not test:
-            self.label = pl.read_csv(config["labels"])
-            self.label = self.label.to_dummies(columns=self.label.columns[1:])
-            self.coordinates = pl.read_csv(config["coordinates"])
-
-            for j in tqdm(self.series.iter_rows(named=True),
-                        total=self.series.shape[0], desc="Processing items"):
-                path = os.path.join(config["images"], str(j['study_id']), str(j['series_id']))
-                clms_df = self.coordinates.filter(
-                    (pl.col("study_id") == j['study_id']) &
-                    (pl.col("series_id") == j['series_id'])
-                ).select(["condition", "level", "instance_number", "x", "y"])
+        if self.transform is None:
+            self.transform = T.Compose([
+                T.Resize((256,256)),
+                T.ToTensor(),
+            ])
                 
-                clms = []
-                for l in clms_df.iter_rows(named=True):
-                    clms.append((
-                        ("_".join(l["condition"].split(" ")))
-                        + "_" + "_".join(l["level"].split('/'))
-                    ).lower())
-                clms = [x + y for x in clms for y in ["_Normal/Mild", "_Moderate", "_Severe"]]
-                
-                label = self.label.filter(
-                    pl.col("study_id") == j['study_id']   
-                ).select(clms)
-                try:
-                    label = np.array(label).reshape(-1, 3)
-                except Exception as _:
-                    continue
-                data = (path, label, np.array(
-                    clms_df.select(["x", "y","instance_number"])),
-                    j["series_description"]
-                    )
-                self.data_points.append(data)
-        else:
-            for j in self.series.iter_rows(named=True):
-                path = os.path.join(config["images"], str(j['study_id']), str(j['series_id']))
-
     def __len__(self):
-        return len(self.data_points)
-
-    def __getitem__(self, idx):
-        if not self.test:
-            pth, label, coords, axis = self.data_points[idx]
-        else:
-            pth, axis = self.data_points[idx]
-            
-
-        ordered = natsort.natsorted(os.listdir(pth))
-        dicoms = [pydicom.read_file(os.path.join(pth, i)) for i in ordered]
-
-        if self.transform:
-            dicoms = [self.transform(i.pixel_array.astype(np.float32)) for i in dicoms]
-        else: 
-            dicoms = [torch.tensor(i.pixel_array) for i in dicoms]
-        dicoms = np.stack(dicoms)
-        
-        if not self.test:
-            data = {"axis": axis, "image": dicoms,
-                "label": torch.tensor(label), "coords": torch.tensor(coords)}
-        else:
-            data = {"axis": axis, "image": dicoms,
-                }
-        return data
+        return len(self.df)
     
+    def __getitem__(self,idx):
+        image,mask,left_right =self.get_images(idx)
+        image= self.transform(image) 
+        
+        image = image.clone().detach().float()
+        mask = torch.tensor(mask,dtype=torch.long)
+        left_right = torch.tensor(left_right,dtype=torch.long)
+        
+        return image,mask,left_right
+    
+    def get_images(self,idx):
+        row = self.df.iloc[idx]
+        dicom_path = os.path.join(self.img_dir, str(row['study_id']),str(row['series_id']),f"{str(row['instance_number'])}.dcm")
+        dicom = pydicom.dcmread(dicom_path)
+        image = dicom.pixel_array
+        # Normalize and convert to RGB
+        image_normalized = np.interp(image, (0, 1810), (0, 255)).astype(np.uint8)
+        #rgb_image = np.stack([image_normalized] * 3, axis=-1)
+        # Convert NumPy array to PIL Image for cropping
+        rgb_image_pil = Image.fromarray(image_normalized)
+
+        width,height =rgb_image_pil.size
+
+        coor=np.array(row.loc['x_level_l1_l2':'y_level_l5_s1'].tolist(),dtype=float)
+        coor[0::2],coor[1::2]= coor[0::2]/width ,coor[1::2]/height #coor in 0-1
+        
+        # Create a segmentation mask for the image (5 spinal levels)
+        mask = self.create_segmentation_mask(coor, img_shape=(256, 256))
+
+        left_right=float(row['condition_encoded'])
+        
+        return rgb_image_pil, mask,left_right
+    
+    def create_segmentation_mask(self, label, img_shape=(256, 256), box_size=15):
+        mask = np.zeros(img_shape, dtype=np.float32)
+        width, height = img_shape
+
+        # Iterate over spinal level coordinates (x1, y1, x2, y2, ...)
+        for i in range(0, len(label), 2):
+            x = int(label[i] * width)  # x coordinate scaled to image size
+            y = int(label[i + 1] * height)  # y coordinate scaled to image size
+
+            # Assign class label for each spinal level (1 to 5)
+            class_label = (i // 2) + 1
+
+            # Draw a small square around the (x, y) point
+            x_min = max(0, x - (box_size-5) // 2)
+            x_max = min(width, x + (box_size-5) // 2)
+            y_min = max(0, y - box_size // 2)
+            y_max = min(height, y + box_size // 2)
+
+            # Fill the mask with the class label
+            mask[y_min:y_max, x_min:x_max] = class_label
+
+        return mask
+
+
 class naive_loader(Dataset):
     def __init__(self,path:str,ch,transform,train=True,augment=None) -> None:
         with open(path,"r") as fl:
