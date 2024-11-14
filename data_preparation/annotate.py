@@ -11,8 +11,12 @@ def naive_annotate(root,train_paths:dict,out:str)->None:
     v1 = len(label)
     label = label.drop_nulls()
     print(v1 - len(label))
+    category_order = ['Normal/Mild', 'Moderate', 'Severe']
+    label = label.with_columns(
+        [pl.col(column).cast(pl.Categorical).set_sorted(category_order) for column in label.columns[1:]]
+    )
     label = label.to_dummies(columns=label.columns[1:])
-    
+    print(label.head())
     series_intermediate = defaultdict(list)
     os.makedirs(".cache",exist_ok=True)
     for series_data in tqdm(series.iter_rows(named=True),
