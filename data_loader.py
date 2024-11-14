@@ -14,7 +14,7 @@ from tqdm import tqdm
 from utils.utility import get_elements
 import json
 from PIL import Image
-
+import torch
 class DataLoader(Dataset):
     """
     
@@ -161,7 +161,7 @@ class DataLoader_np(Dataset):
         return data
     
 class naive_loader(Dataset):
-    def __init__(self,path:str,ch,transform,train=True) -> None:
+    def __init__(self,path:str,ch,transform,train=True,augment=None) -> None:
         with open(path,"r") as fl:
             data = json.load(fl)
         if train:
@@ -172,6 +172,7 @@ class naive_loader(Dataset):
         self.transform = transform
         self.ch = ch
         self.order = None
+        self.augment = augment
     def __len__(self):
         return len(self.data_list)
     def __getitem__(self, index) :
@@ -183,8 +184,10 @@ class naive_loader(Dataset):
             n = get_elements(n,self.ch)
             di = [pydicom.dcmread(os.path.join(path[0],dirs[i])) for i in n]
             di = [self.transform(Image.fromarray(i.pixel_array.astype(np.int16))) for i in di]
+            if self.augment:
+                di = [self.augment(Image.fromarray(i.numpy()[0,0,:])) for i in di]
             images.extend(di)
         di = torch.stack(images)
         self.order = list(labels.keys())
-        return (di.type(torch.float32).squeeze(dim=1),torch.tensor(list(labels.values()),dtype=float)
+        return (di.type(torch.float32).squeeze(dim=1),torch.tensor(list(labels.values()),dtype=torch.float32)
                 ,torch.tensor(int(self.data_list[index]),dtype=int))
