@@ -7,10 +7,7 @@ import natsort
 import torch
 from torch.utils.data import Dataset
 import pydicom
-import polars as pl
 import numpy as np
-from Preprocessing.utility import get_z
-from tqdm import tqdm
 from utils.utility import get_elements
 import json
 from PIL import Image
