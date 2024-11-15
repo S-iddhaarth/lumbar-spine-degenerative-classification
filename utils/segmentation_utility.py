@@ -26,14 +26,20 @@ def reconstruct_df(df)->tuple:
 
 
 def xy_spinal_neural(df):
-    # Required levels and associated columns
+    ###########################################################################################
+    
+    '''
+    In summary, the code filters the DataFrame df to keep only those groups 
+    (defined by study_id, series_id, and instance_number) that have all the 
+    required levels ('L1/L2', 'L2/L3', 'L3/L4', 'L4/L5', 'L5/S1') present in 
+    the level column. The resulting filtered DataFrame is stored in df_filtered.
+    '''
     required_levels = ['L1/L2', 'L2/L3', 'L3/L4', 'L4/L5', 'L5/S1']
-
-    ## filterout data which having both level
     df_filtered = df.groupby(['study_id','series_id','instance_number']).filter(
     lambda group: set(required_levels).issubset(group['level'].unique()))
-
-    # make localize 
+    
+    ##########################################################################################
+    
     grouped = df_filtered.groupby(['study_id', 'series_id', 'instance_number'])
     result_rows = []
     for (study_id, series_id, instance_number), group in grouped:
@@ -46,7 +52,6 @@ def xy_spinal_neural(df):
                 if group[col].nunique() == 1:  # Check if all values in this column are the same
                     row_data[col] = group[col].iloc[0]  # Take the unique value
 
-
         # Extract x and y coordinates for each required level
         for level in required_levels:
             level_data = group[group['level'] == level]
@@ -56,7 +61,6 @@ def xy_spinal_neural(df):
 
         # Add the row data to the result_rows list
         result_rows.append(row_data)
-
     # Convert the result_rows list to a DataFrame
     result = pd.DataFrame(result_rows)
     return result
