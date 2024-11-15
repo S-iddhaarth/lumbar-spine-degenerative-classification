@@ -10,7 +10,7 @@ import utils.segmentation_utility as helper
 import data_loader
 import utils.visualize as visuals
 import models.segment as model
-import trainers.segmentation_trainer as trainer
+import trainers.sagittal_segmentation_trainer as trainer
 from sklearn.model_selection import train_test_split
 
 
@@ -55,7 +55,7 @@ def main():
                                                            spinal_train_loader, spinal_val_loader,
                                                            optimizer_mask, 
                                                            scheduler_mask,
-                                                           model_name,
+                                                           model_name,"weights/sagittal_T2_segmentation/model1",
                                                            num_epochs=30)
 if __name__ == '__main__':
     main()

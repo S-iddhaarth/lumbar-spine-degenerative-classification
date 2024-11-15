@@ -10,7 +10,7 @@ import utils.segmentation_utility as helper
 import data_loader
 import utils.visualize as visuals
 import models.segment as model
-import trainers.segmentation_trainer as trainer
+import trainers.axial_segmentation_trainer as trainer
 from sklearn.model_selection import train_test_split
 
 
@@ -41,8 +41,8 @@ def main():
     subarticular_train_dataset= data_loader.subarticular_Dataset(subarticular_train_df,img_train_path,transform=None)
     subarticular_val_dataset= data_loader.subarticular_Dataset(subarticular_val_df,img_train_path,transform=None)
 
-    subarticular_train_dataset = DataLoader(subarticular_train_dataset,batch_size=32,shuffle=True,num_workers=7,pin_memory=True,prefetch_factor=4 )
-    subarticular_val_dataset = DataLoader(subarticular_val_dataset,batch_size=32,shuffle=False,num_workers=7,pin_memory=True,prefetch_factor=4)      
+    subarticular_train_loader = DataLoader(subarticular_train_dataset,batch_size=32,shuffle=True,num_workers=7,pin_memory=True,prefetch_factor=4 )
+    subarticular_val_loader = DataLoader(subarticular_val_dataset,batch_size=32,shuffle=False,num_workers=7,pin_memory=True,prefetch_factor=4)      
     
     model_mask = model.UNetMobileNetV2(in_channels=1, out_channels=3, pretrained=True)
     model_name='neural'
@@ -58,11 +58,9 @@ def main():
     scheduler_mask = optim.lr_scheduler.StepLR(optimizer_mask, step_size=10, gamma=0.1) 
     scheduler_leris = optim.lr_scheduler.StepLR(optimizer_leris, step_size=15, gamma=0.1) 
 
-    model_mask,model_rl, train_history_df = train_and_evaluate(model_mask, model_rl, 
-                                                               subarticular_train_loader, subarticular_val_loader, 
-                                                               optimizer_mask, optimizer_leris, 
-                                                               scheduler_mask, scheduler_leris, 
-                                                               num_epochs=30)
+    model_mask,model_rl, train_history_df = trainer.train_and_evaluate_v0(
+        model_mask, model_rl,subarticular_train_loader, subarticular_val_loader, 
+        optimizer_mask, optimizer_leris,scheduler_mask, scheduler_leris,"weights/axial_T2_segmentation/model1",num_epochs=30)
     
 
 

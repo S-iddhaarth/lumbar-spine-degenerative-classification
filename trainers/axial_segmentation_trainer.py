@@ -1,8 +1,8 @@
 import torch
 from torch import nn
 import time
-
-
+import os
+import pandas as pd
 from sklearn.preprocessing import LabelEncoder, label_binarize
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score ,accuracy_score,classification_report
@@ -10,7 +10,9 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 
 #training process
-def train_and_evaluate_v0(model_mask, model_rl, train_loader, test_loader, optimizer_mask, optimizer_leris, scheduler_mask, scheduler_leris, num_epochs=10):
+def train_and_evaluate_v0(model_mask, model_rl, train_loader, test_loader, optimizer_mask,
+                optimizer_leris, scheduler_mask, scheduler_leris,checkpoint, num_epochs=10):
+    os.makedirs(checkpoint,exist_ok=True)
     device_mask = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     device_rl = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -110,7 +112,8 @@ def train_and_evaluate_v0(model_mask, model_rl, train_loader, test_loader, optim
             
         if avg_test_loss_mask <best_test_loss:
             best_test_loss = avg_test_loss_mask
-            torch.save(model_mask.state_dict(),'mask_best_Subarticular.pth')
+            torch.save(model_mask.state_dict(),
+                    os.path.join(checkpoint,'mask_best_Subarticular.pth'))
             #torch.save(model_rl.state_dict(),'lr_best_Subarticular.pth')
             print(f'best loss::{best_test_loss}')
         print(

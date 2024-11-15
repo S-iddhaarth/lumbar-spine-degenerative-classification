@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import time
-
+import os
 
 from sklearn.preprocessing import LabelEncoder, label_binarize
 from sklearn.model_selection import train_test_split
@@ -9,7 +9,9 @@ from sklearn.metrics import roc_auc_score ,accuracy_score,classification_report
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 import wandb
-def train_and_evaluate_v0(model,train_loader,test_loader,optimizer,scheduler,model_name,num_epochs=10,log=True):
+def train_and_evaluate_v0(model,train_loader,test_loader,optimizer,scheduler,model_name,
+                    checkpoint,num_epochs=10,log=True):
+    os.makedirs(checkpoint,exist_ok=True)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     print(device)
@@ -72,7 +74,7 @@ def train_and_evaluate_v0(model,train_loader,test_loader,optimizer,scheduler,mod
             
         if average_test_loss <best_test_loss:
             best_test_loss = average_test_loss
-            torch.save(model.state_dict(), f'lo_best_{model_name}.pth')
+            torch.save(model.state_dict(), os.path.join(checkpoint,f'lo_best_{model_name}.pth'))
             
         print(f'Epoch {epoch+1}/{num_epochs}: \t Lr:{current_lr},\n train loss:{average_train_loss:.6f} \t test loss:{average_test_loss:.6f} \t val acc:{val_accuracy:.4f}')
         print('-'*80)
