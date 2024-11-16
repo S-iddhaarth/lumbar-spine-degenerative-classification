@@ -135,7 +135,7 @@ def train_and_evaluate_v0(model_mask, model_rl, train_loader, test_loader, optim
         'test_loss_mask': test_loss_mask_set ,
     })
     
-    torch.save(model_mask.state_dict(), 'mask_last_subarticular.pth')
+    torch.save(model_mask.state_dict(),os.path.join(checkpoint,'mask_last_subarticular.pth'))
 
     return model_mask,model_rl, train_history_df
 

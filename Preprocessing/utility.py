@@ -1,8 +1,8 @@
 import torch
 import matplotlib.pyplot as plt
 import torchvision.transforms.functional as TF
-
-def extract_regions_from_image(model, img, resize_size=(64, 64), num_regions=5):
+import pandas as pd
+def extract_regions_from_image(model, img,study_id,series_id, resize_size=(64, 64), num_regions=5):
     """
     Extracts, crops, and resizes regions from the image using the model's predicted mask.
 
@@ -15,7 +15,6 @@ def extract_regions_from_image(model, img, resize_size=(64, 64), num_regions=5):
     Returns:
     - A tuple containing the resized regions for each unique mask value (excluding the background)
     """
-    model.eval()
     with torch.no_grad():
         mask = model(img)
         _, mask = torch.max(mask, dim=1)  # Assuming mask output shape is (B, num_classes, H, W)
@@ -32,16 +31,24 @@ def extract_regions_from_image(model, img, resize_size=(64, 64), num_regions=5):
 
         # Extract regions for the current image
         image_regions = []
+        problem_region = []
         for value in unique_values:
-            region = crop_and_resize_region(img_tensor, mask_tensor, value, resize_size)
+            flag = False
+            try:
+                region = crop_and_resize_region(img_tensor, mask_tensor, value, resize_size)
+            except:
+                flag = True
+                problem_region.append((study_id[i],series_id[i]))
             if region is not None:
                 image_regions.append(region)
+            else:
+                print('warning... anomalies detected')
 
         # Fill the regions tensor
         for idx in range(min(num_regions, len(image_regions))):
             regions[idx][i] = image_regions[idx]
 
-    return tuple(regions)
+    return tuple(regions),problem_region
 
 def crop_and_resize_region(image, mask, value, size=(32, 32)):
     """
@@ -85,3 +92,14 @@ def visualize_regions(regions):
                 plt.imshow(region.permute(1, 2, 0))  # (C, H, W) to (H, W, C)
             plt.title(f'Region {idx + 1} - Image {i + 1}')
             plt.show()
+            
+def generate_train_annotation(label_df,series_df,train_df):
+    df = pd.merge(label_df[['study_id', 'series_id', 'condition', 'level']],series_df,on=["study_id","series_id"])
+
+    df['condition_level'] = df['condition'].str.replace(" ", "_").str.lower() + "_" + df['level'].str.replace("/","_").str.lower()
+    merged_df = df.merge(train_df.dropna(), on=['study_id'])
+    def get_condition_level_value(row):
+        return row[row['condition_level']]
+    df['label'] = merged_df.apply(get_condition_level_value, axis=1)
+    merged_df = df[['study_id', 'series_id', 'condition', 'level', 'series_description', 'label']]
+    return merged_df

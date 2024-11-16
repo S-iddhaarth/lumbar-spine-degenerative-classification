@@ -32,7 +32,7 @@ def main():
     df = pd.merge(df,train_df,on = 'study_id')
     df_spinal, df_neural,df_subarticular = helper.reconstruct_df(df)
 
-    df_subarticular_xy =helper.xy_subarticular(df_neural)
+    df_subarticular_xy =helper.xy_subarticular(df_subarticular)
     
     subarticular_train_df, subarticular_val_df=train_test_split(df_subarticular_xy,test_size=0.2,random_state=208)
     print(f"size for train:{len(subarticular_train_df)}")
@@ -44,7 +44,7 @@ def main():
     subarticular_train_loader = DataLoader(subarticular_train_dataset,batch_size=32,shuffle=True,num_workers=7,pin_memory=True,prefetch_factor=4 )
     subarticular_val_loader = DataLoader(subarticular_val_dataset,batch_size=32,shuffle=False,num_workers=7,pin_memory=True,prefetch_factor=4)      
     
-    model_mask = model.UNetMobileNetV2(in_channels=1, out_channels=3, pretrained=True)
+    model_mask = model.UNetVGG16(in_channels=1, out_channels=3,pretrained= models.VGG16_Weights.IMAGENET1K_V1)
     model_name='neural'
 
     
@@ -60,7 +60,7 @@ def main():
 
     model_mask,model_rl, train_history_df = trainer.train_and_evaluate_v0(
         model_mask, model_rl,subarticular_train_loader, subarticular_val_loader, 
-        optimizer_mask, optimizer_leris,scheduler_mask, scheduler_leris,"weights/axial_T2_segmentation/model1",num_epochs=30)
+        optimizer_mask, optimizer_leris,scheduler_mask, scheduler_leris,"weights/axial_T2_segmentation/model2",num_epochs=30)
     
 
 

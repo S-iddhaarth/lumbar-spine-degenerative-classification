@@ -35,7 +35,7 @@ def train_and_evaluate_v0(model,train_loader,test_loader,optimizer,scheduler,mod
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0.0 
-        for inputs, labels,_ in train_loader:
+        for inputs, labels in train_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
@@ -54,7 +54,7 @@ def train_and_evaluate_v0(model,train_loader,test_loader,optimizer,scheduler,mod
         model.eval()
         with torch.no_grad():
             total_test_loss, correct, total = 0.0, 0.0, 0.0
-            for inputs,labels,_ in test_loader:
+            for inputs,labels in test_loader:
                 inputs,labels = inputs.to(device),labels.to(device)
                 outputs = model(inputs)
                 test_loss=criterion_mask(outputs,labels).item()
@@ -86,7 +86,7 @@ def train_and_evaluate_v0(model,train_loader,test_loader,optimizer,scheduler,mod
         })
     train_end = time.time()
     time_used = train_end-train_start
-    torch.save(model.state_dict(), f'lo_last_{model_name}.pth')
+    torch.save(model.state_dict(), os.path.join(checkpoint,f'lo_last_{model_name}.pth'))
     print(f'Time used for Training:{time_used} sec ')
     print('-'* 80)
     
