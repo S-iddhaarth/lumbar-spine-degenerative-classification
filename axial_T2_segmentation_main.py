@@ -5,13 +5,14 @@ import torch.optim as optim
 from torchvision import models 
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
-
+import torch
 import utils.segmentation_utility as helper
 import data_loader
 import utils.visualize as visuals
 import models.segment as model
 import trainers.axial_segmentation_trainer as trainer
 from sklearn.model_selection import train_test_split
+import segmentation_models_pytorch as smp
 
 
 def main():
@@ -44,23 +45,43 @@ def main():
     subarticular_train_loader = DataLoader(subarticular_train_dataset,batch_size=32,shuffle=True,num_workers=7,pin_memory=True,prefetch_factor=4 )
     subarticular_val_loader = DataLoader(subarticular_val_dataset,batch_size=32,shuffle=False,num_workers=7,pin_memory=True,prefetch_factor=4)      
     
-    model_mask = model.UNetVGG16(in_channels=1, out_channels=3,pretrained= models.VGG16_Weights.IMAGENET1K_V1)
+    model_mask = smp.Unet(
+    encoder_name="timm-resnest14d",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+    encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
+    in_channels=1,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+    classes=3,                      # model output channels (number of classes in your dataset)
+)
+#model_rl = neural_resnet(num_classes=2)
     model_name='neural'
+    num_epochs = 100
+    warmup_steps = 10
+    optimizer_mask = optim.AdamW(model_mask.parameters(), lr=0.001)
 
-    
-    model_rl = model.subarticular_resnet(num_classes=5)
-
-    optimizer_mask = optim.Adam(model_mask.parameters(), lr=0.001)
-
-    optimizer_leris = optim.Adam(model_rl.parameters(), lr=0.001)
+    #optimizer_leris = optim.Adam(model_rl.parameters(), lr=0.001)
 
 
-    scheduler_mask = optim.lr_scheduler.StepLR(optimizer_mask, step_size=10, gamma=0.1) 
-    scheduler_leris = optim.lr_scheduler.StepLR(optimizer_leris, step_size=15, gamma=0.1) 
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_mask, T_max=num_epochs - warmup_steps)
+
+        # Optionally, if using PyTorch 1.10+ for LinearLR
+        # Note: PyTorch 1.10+ introduced LinearLR, so ensure your version supports it.
+    if torch.__version__ >= '1.10.0':
+        warmup_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer_mask, start_factor=1e-4, total_iters=warmup_steps)
+        main_scheduler = torch.optim.lr_scheduler.SequentialLR(
+            optimizer_mask, schedulers=[warmup_scheduler, scheduler], milestones=[warmup_steps]
+        )
+    else:
+        # Custom Lambda function for warmup
+        def lr_lambda(epoch):
+            if epoch < warmup_steps:
+                return (epoch + 1) / warmup_steps
+            else:
+                return 0.5 * (1 + torch.cos((epoch - warmup_steps) / (num_epochs - warmup_steps) * torch.pi))
+
+        main_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda) 
 
     model_mask,model_rl, train_history_df = trainer.train_and_evaluate_v0(
-        model_mask, model_rl,subarticular_train_loader, subarticular_val_loader, 
-        optimizer_mask, optimizer_leris,scheduler_mask, scheduler_leris,"weights/axial_T2_segmentation/model2",num_epochs=30)
+        model_mask, subarticular_train_loader, subarticular_val_loader, 
+        optimizer_mask, main_scheduler, "weights/axial_T2_segmentation/model3",num_epochs=100)
     
 
 

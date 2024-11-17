@@ -56,6 +56,6 @@ def main():
                                                            optimizer_mask, 
                                                            scheduler_mask,
                                                            model_name,"weights/sagittal_T2_segmentation/model1",
-                                                           num_epochs=30)
+                                                           num_epochs=100)
 if __name__ == '__main__':
     main()

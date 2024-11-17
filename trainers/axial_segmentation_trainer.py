@@ -7,29 +7,34 @@ from sklearn.preprocessing import LabelEncoder, label_binarize
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score ,accuracy_score,classification_report
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-
+import wandb
 
 #training process
-def train_and_evaluate_v0(model_mask, model_rl, train_loader, test_loader, optimizer_mask,
-                optimizer_leris, scheduler_mask, scheduler_leris,checkpoint, num_epochs=10):
+def train_and_evaluate_v0(model_mask, train_loader, test_loader, optimizer_mask,
+                scheduler_mask,checkpoint, num_epochs=10,log=True):
     os.makedirs(checkpoint,exist_ok=True)
     device_mask = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     device_rl = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     model_mask.to(device_mask)
-    model_rl.to(device_rl)
+    # model_rl.to(device_rl)
     print(f'model unet in {device_mask}') #', mdoel left right in {device_rl}')
-    
+    if log:
+        wandb.init(
+            job_type="naive_run",
+            project="The last dance",
+            entity="PaneerShawarma"
+        )
     criterion = nn.CrossEntropyLoss(reduction='mean')
     class_weights = torch.tensor([0.4, 1.0, 1.0], dtype=torch.float32).to(device_mask)
     criterion_mask = nn.CrossEntropyLoss(reduction='mean', weight=class_weights)
 
     
     optimizer_mask = optimizer_mask #torch.optim.AdamW(model.parameters(), lr=0.00001)
-    optimizer_leris = optimizer_leris
+    # optimizer_leris = optimizer_leris
     
     scheduler_mask = scheduler_mask #optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1) 
-    scheduler_leris = scheduler_leris
+    # scheduler_leris = scheduler_leris
     
     train_loss_mask_set, test_loss_mask_set, train_loss_rl_set, test_loss_rl_set = [], [], [], []
     #train_coor_set,test_coor_set = [],[]
@@ -45,7 +50,7 @@ def train_and_evaluate_v0(model_mask, model_rl, train_loader, test_loader, optim
             inputs_mask,input_leris, mask,leris = inputs.to(device_mask), inputs.to(device_rl), mask.to(device_mask),leris.to(device_rl)
             
             optimizer_mask.zero_grad()
-            optimizer_leris.zero_grad()
+            # optimizer_leris.zero_grad()
             
             output_mask = model_mask(inputs_mask)
             #output_leris = model_rl(input_leris)
@@ -78,8 +83,10 @@ def train_and_evaluate_v0(model_mask, model_rl, train_loader, test_loader, optim
         model_mask.eval()
         #model_rl.eval()
         total_loss_mask, total_loss_leris, correct_mask, correct_leris, total_mask, total_leris = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-        with torch.no_grad(): 
+        with torch.no_grad():
+            count = 0 
             for inputs,mask,leris in test_loader:
+                
                 inputs_mask,input_leris, mask,leris = inputs.to(device_mask), inputs.to(device_rl), mask.to(device_mask),leris.to(device_rl)
                 output_mask = model_mask(inputs_mask)
                 #output_leris = model_rl(input_leris)
@@ -99,6 +106,21 @@ def train_and_evaluate_v0(model_mask, model_rl, train_loader, test_loader, optim
                 #correct_leris += (preds_leris == leris).sum().item()
                 total_mask += mask.numel()
                 #total_leris += leris.numel()
+                _, predicted_mask = torch.max(output_mask, 1)                # print(f'input - {inputs.shape}, mask - {predicted_mask.shape}, label - {labels.shape}')
+                if log:
+                    if count == 0 :
+                        class_labels = {0: "background", 1: "Left", 2: "Right"}
+
+                        masked_image = wandb.Image(
+                            inputs[0,0].detach().cpu().numpy(),
+                            masks={
+                                "predictions": {"mask_data": predicted_mask[0].detach().cpu().numpy(), "class_labels": class_labels},
+                                "ground_truth": {"mask_data": mask[0].detach().cpu().numpy(), "class_labels": class_labels},
+                            },
+                        )
+                        
+                        wandb.log({"img_with_masks": masked_image})
+                count += 1
     
                 
         avg_test_loss_mask = total_loss_mask / len(test_loader)
@@ -124,7 +146,13 @@ def train_and_evaluate_v0(model_mask, model_rl, train_loader, test_loader, optim
             f'test acc mask:{accuracy_mask:.2f}% \t'
         )
         print('-'*80)
-            
+        if log:
+            wandb.log({
+            "learning rate":current_lr,
+            "train loss":avg_train_loss_mask,
+            "test loss":avg_test_loss_mask,
+            "val accuracy":accuracy_mask
+        })
     train_end = time.time()
     time_used = train_end-train_start
     print(f'Time used for Training:{time_used} sec ')
@@ -217,7 +245,22 @@ def train_and_evaluate_v1(model_mask, model_rl, train_loader, test_loader, optim
                 loss_leris = criterion(output_leris,leris)
                 total_loss_mask += loss_mask.item()
                 total_loss_leris += loss_leris.item()
-                
+                _, predicted_mask = torch.max(output_mask, 1)
+
+                if log:
+                    if count == 0 :
+                        class_labels = {0: "background", 1: "L1/L2", 2: "L2/L3", 3: "L3/L4",4:"L4/L5",5:"L5/S1"}
+
+                        masked_image = wandb.Image(
+                            inputs[0,0].detach().cpu().numpy(),
+                            masks={
+                                "predictions": {"mask_data": predicted_mask[0].detach().cpu().numpy(), "class_labels": class_labels},
+                                "ground_truth": {"mask_data": mask[0].detach().cpu().numpy(), "class_labels": class_labels},
+                            },
+                        )
+                        
+                        wandb.log({"img_with_masks": masked_image})
+                count += 1
                 #accuracy
                 _, preds_mask = torch.max(output_mask, 1)
                 _, preds_leris = torch.max(output_leris, 1)
@@ -227,7 +270,7 @@ def train_and_evaluate_v1(model_mask, model_rl, train_loader, test_loader, optim
                 correct_leris += (preds_leris == leris).sum().item()
                 total_mask += mask.numel()
                 total_leris += leris.numel()
-    
+
                 
         avg_test_loss_mask = total_loss_mask / len(test_loader)
         avg_test_loss_leris = total_loss_leris / len(test_loader)

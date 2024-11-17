@@ -18,7 +18,7 @@ def train_and_evaluate_v0(model,train_loader,test_loader,optimizer,scheduler,mod
     if log:
             wandb.init(
                 job_type="naive_run",
-                project="lumbar-spine-no-error",
+                project="The last dance",
                 entity="PaneerShawarma"
             )
     #criterion = nn.CrossEntropyLoss(reduction='mean')
@@ -35,8 +35,8 @@ def train_and_evaluate_v0(model,train_loader,test_loader,optimizer,scheduler,mod
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0.0 
-        for inputs, labels in train_loader:
-            inputs, labels = inputs.to(device), labels.to(device)
+        for bach in train_loader:
+            inputs, labels = bach[0].to(device), bach[1].to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
             #print(f'labels shape: {labels.shape}')
@@ -54,9 +54,11 @@ def train_and_evaluate_v0(model,train_loader,test_loader,optimizer,scheduler,mod
         model.eval()
         with torch.no_grad():
             total_test_loss, correct, total = 0.0, 0.0, 0.0
-            for inputs,labels in test_loader:
-                inputs,labels = inputs.to(device),labels.to(device)
+            count = 0
+            for bach in test_loader:
+                inputs,labels = bach[0].to(device),bach[1].to(device)
                 outputs = model(inputs)
+                _, predicted_mask = torch.max(outputs, 1)
                 test_loss=criterion_mask(outputs,labels).item()
                 total_test_loss += test_loss
                 
@@ -66,6 +68,21 @@ def train_and_evaluate_v0(model,train_loader,test_loader,optimizer,scheduler,mod
                 # Calculate accuracy by comparing predictions to ground truth
                 correct += (preds == labels).sum().item()
                 total += labels.numel()
+                # print(f'input - {inputs.shape}, mask - {predicted_mask.shape}, label - {labels.shape}')
+                if log:
+                    if count == 0 :
+                        class_labels = {0: "background", 1: "L1/L2", 2: "L2/L3", 3: "L3/L4",4:"L4/L5",5:"L5/S1"}
+
+                        masked_image = wandb.Image(
+                            inputs[0,0].detach().cpu().numpy(),
+                            masks={
+                                "predictions": {"mask_data": predicted_mask[0].detach().cpu().numpy(), "class_labels": class_labels},
+                                "ground_truth": {"mask_data": labels[0].detach().cpu().numpy(), "class_labels": class_labels},
+                            },
+                        )
+                        
+                        wandb.log({"img_with_masks": masked_image})
+                count += 1
                 
         average_test_loss = total_test_loss/len(test_loader)
         test_loss_set.append(average_test_loss)
