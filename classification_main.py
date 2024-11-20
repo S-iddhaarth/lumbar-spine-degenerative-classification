@@ -97,7 +97,7 @@ def main():
         
     trainer.train_and_evaluate(
         sagittal_t1_loader,sagittal_t1_left,criterion,
-        main_scheduler,optimizer,100,'cuda',False,"weights/mod1"
+        main_scheduler,optimizer,100,'cuda',True,"weights/mod1"
     )
     
 if __name__ == '__main__':
